@@ -6,11 +6,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.yandex.practicum.dto.HitDto;
 import ru.yandex.practicum.dto.StatsDto;
+import ru.yandex.practicum.exceptions.ValidationException;
 import ru.yandex.practicum.model.Hit;
 import ru.yandex.practicum.model.HitMapper;
 import ru.yandex.practicum.repository.HitRepository;
 
-import javax.validation.ValidationException;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -31,8 +32,8 @@ public class StatsServiceImpl implements StatsService {
     @Transactional(readOnly = true)
     @Override
     public List<StatsDto> getStats(LocalDateTime start, LocalDateTime end, List<String> uris, Boolean isUnique) {
-        if (start.isEqual(end) || start.isAfter(end)) {
-            throw new ValidationException("Дата начала (" + start + ") должна быть строго раньше даты конца (" + end +
+        if (start.isAfter(end)) {
+            throw new ValidationException("Дата начала (" + start + ") должна быть раньше даты конца (" + end +
                     ").");
         }
 
