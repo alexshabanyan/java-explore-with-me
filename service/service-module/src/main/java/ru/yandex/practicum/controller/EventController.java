@@ -10,7 +10,9 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.model.dto.*;
 import ru.yandex.practicum.model.enums.EventSortType;
+import ru.yandex.practicum.model.enums.RatingSortType;
 import ru.yandex.practicum.service.EventService;
+import ru.yandex.practicum.service.RatingService;
 import ru.yandex.practicum.service.RequestService;
 
 import javax.servlet.http.HttpServletRequest;
@@ -26,6 +28,7 @@ import java.util.List;
 public class EventController {
     private final EventService eventService;
     private final RequestService requestService;
+    private final RatingService ratingService;
 
     private static final String DATE_FORMAT = "yyyy-MM-dd HH:mm:ss";
 
@@ -51,6 +54,12 @@ public class EventController {
         log.info("Получен PATCH запрос на обновление события с ID: {}. Было:\n{}\n Стало:\n {}",
                 eventId, eventService.getEventById(eventId), eventDto);
         return eventService.updateEvent(eventId, eventDto);
+    }
+
+    @DeleteMapping("/admin/events/{eventId}/rating")
+    public EventFullDto deleteRating(@PathVariable Long eventId) {
+        log.info("Получен DELETE запрос на удаление (обнуление) рейтинга для события с ID: {}", eventId);
+        return ratingService.deleteRating(eventId);
     }
 
     // ---------------public-----------------
@@ -90,6 +99,21 @@ public class EventController {
     public EventFullDto getEventById(@PathVariable("id") Long id, HttpServletRequest request) {
         log.info("Получен GET запрос на нахождение события по ID: {}.", id);
         return eventService.getEventById(id, request);
+    }
+
+    @GetMapping("/events/rating")
+    public List<EventShortDto> getAllEventsSortedByRating(
+            @RequestParam(required = false, defaultValue = "DESC") RatingSortType sort,
+            @RequestParam(required = false, defaultValue = "0") @Min(0) Integer from,
+            @RequestParam(required = false, defaultValue = "10") @Min(1) Integer size,
+            HttpServletRequest request) {
+        log.info("Получен GET запрос на нахождение всех событий по рейтингу с параметрами: sort= {}; from= {}; size= {}.",
+                sort, from, size);
+
+        int page = from > 0 ? from / size : from;
+        PageRequest pageRequest = PageRequest.of(page, size);
+
+        return eventService.getAllEventsSortedByRating(sort, pageRequest, request);
     }
 
     // ---------------private----------------
@@ -142,5 +166,24 @@ public class EventController {
         log.info("Получен PATCH запрос на обновление статуса заявок на участие в событии с ID: {}, созданного пользователем: {}. " +
                 "Стало:\n {}", eventId, userId, eventDto);
         return requestService.updateRequestsStatusForEventCreatedByUser(userId, eventId, eventDto);
+    }
+
+    @PostMapping("/users/{userId}/events/{eventId}/rating")
+    @ResponseStatus(HttpStatus.CREATED)
+    public EventFullDto addRating(@PathVariable Long userId,
+                                  @PathVariable Long eventId,
+                                  @Valid @RequestBody RatingDto ratingDto) {
+        log.info("Получен POST запрос на добавление нового рейтинга: {} пользователем: {} на событие: {}", ratingDto, userId, eventId);
+        return ratingService.addRating(userId, eventId, ratingDto);
+    }
+
+    @PatchMapping("/users/{userId}/events/{eventId}/rating/{ratingId}")
+    public EventFullDto updateRating(@PathVariable Long userId,
+                                     @PathVariable Long eventId,
+                                     @PathVariable Long ratingId,
+                                     @Valid @RequestBody RatingDto ratingDto) {
+        log.info("Получен PATCH запрос на обновление рейтинга с ID: {}, созданного пользователем: {} на событие: {}. " +
+                "Стало:\n {}", ratingId, userId, eventId, ratingDto);
+        return ratingService.updateRating(userId, eventId, ratingId, ratingDto);
     }
 }

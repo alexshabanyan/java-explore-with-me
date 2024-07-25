@@ -12,6 +12,7 @@ public class UserMapper {
                     .id(userDto.getId())
                     .name(userDto.getName())
                     .email(userDto.getEmail())
+                    .rating(userDto.getRating())
                     .build();
         } else {
             return null;
@@ -24,6 +25,7 @@ public class UserMapper {
                     .id(user.getId())
                     .name(user.getName())
                     .email(user.getEmail())
+                    .rating(user.getRating())
                     .build();
         } else {
             return null;

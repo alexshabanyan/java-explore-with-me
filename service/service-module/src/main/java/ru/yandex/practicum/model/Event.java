@@ -67,4 +67,7 @@ public class Event {
 
     @Column
     private Long views;
+
+    @Column
+    private Long rating;
 }

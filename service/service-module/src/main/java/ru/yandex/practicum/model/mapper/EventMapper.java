@@ -33,6 +33,7 @@ public class EventMapper {
                     .state(event.getState().name())
                     .title(event.getTitle())
                     .views(event.getViews())
+                    .rating(event.getRating())
                     .build();
         } else {
             return null;
@@ -51,6 +52,7 @@ public class EventMapper {
                     .paid(event.getPaid())
                     .title(event.getTitle())
                     .views(event.getViews())
+                    .rating(event.getRating())
                     .build();
         } else {
             return null;
@@ -70,6 +72,7 @@ public class EventMapper {
                     .requestModeration(eventDto.getRequestModeration() != null ? eventDto.getRequestModeration() : true)
                     .title(eventDto.getTitle())
                     .views(0L)
+                    .rating(0L)
                     .confirmedRequests(0)
                     .build();
         } else {

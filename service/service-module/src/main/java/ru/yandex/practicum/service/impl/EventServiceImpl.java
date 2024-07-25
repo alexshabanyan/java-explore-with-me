@@ -14,19 +14,11 @@ import ru.yandex.practicum.client.StatsClient;
 import ru.yandex.practicum.exceptions.ConflictException;
 import ru.yandex.practicum.exceptions.NotFoundException;
 import ru.yandex.practicum.exceptions.ValidationException;
-import ru.yandex.practicum.model.Category;
-import ru.yandex.practicum.model.Event;
-import ru.yandex.practicum.model.EventViewStats;
-import ru.yandex.practicum.model.User;
+import ru.yandex.practicum.model.*;
 import ru.yandex.practicum.model.dto.*;
-import ru.yandex.practicum.model.enums.EventSortType;
-import ru.yandex.practicum.model.enums.EventState;
-import ru.yandex.practicum.model.enums.EventStateAction;
-import ru.yandex.practicum.model.enums.RequestStateAction;
+import ru.yandex.practicum.model.enums.*;
 import ru.yandex.practicum.model.mapper.EventMapper;
-import ru.yandex.practicum.repository.CategoryRepository;
-import ru.yandex.practicum.repository.EventRepository;
-import ru.yandex.practicum.repository.UserRepository;
+import ru.yandex.practicum.repository.*;
 import ru.yandex.practicum.service.EventService;
 
 import javax.servlet.http.HttpServletRequest;
@@ -34,6 +26,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
+
 
 @Service
 @AllArgsConstructor
@@ -111,17 +104,14 @@ public class EventServiceImpl implements EventService {
 
         String uri = request.getRequestURI();
         statsClient.hit(uri, request.getRemoteAddr(), LocalDateTime.now());
-        log.info("getEventById: uri = {}", uri);
 
         ResponseEntity<Object> response = statsClient.getStats(event.getCreatedOn(),
                 event.getEventDate(), new String[]{uri}, true);
 
-        log.info("getEventById: response = {}", response);
         List<EventViewStats> list = objectMapper.readValue(
                 objectMapper.writeValueAsString(response.getBody()), new TypeReference<>() {
                 });
 
-        log.info("getEventById: EventViewStats list = {}", list);
         if (!list.isEmpty()) {
             event.setViews(Long.valueOf(list.get(0).getHits()));
         }
@@ -237,17 +227,52 @@ public class EventServiceImpl implements EventService {
         }
 
         List<Event> events = eventRepository.findAll(specification, pageable);
-        log.info("getAllEventsSorted: events = {}", events);
         statsClient.hit(request.getRequestURI(), request.getRemoteAddr(), LocalDateTime.now());
 
         ResponseEntity<Object> response = getEventsViewStats(events);
-        log.info("getAllEventsSorted: response = {}", response);
         List<EventViewStats> list = objectMapper.readValue(
                 objectMapper.writeValueAsString(response.getBody()),
                 new TypeReference<>() {
                 });
 
-        log.info("getAllEventsSorted: EventViewStats list = {}", list);
+        Map<Long, Long> eventsHits = getEventsHits(list);
+
+        events.forEach(event -> event.setViews(eventsHits.get(event.getId())));
+
+        List<EventShortDto> eventsRes = events.stream()
+                .map(EventMapper::toEventShortDto)
+                .collect(Collectors.toList());
+
+        log.info("Получено {} событий из базы данных из таблицы events.", eventsRes.size());
+        return eventsRes;
+    }
+
+    @SneakyThrows
+    @Transactional(readOnly = true)
+    @Override
+    public List<EventShortDto> getAllEventsSortedByRating(RatingSortType sort, Pageable pageable, HttpServletRequest request) {
+        List<Event> events = new ArrayList<>();
+        switch (sort) {
+            case ASC:
+                events = eventRepository.findAll(pageable).stream()
+                        .sorted(Comparator.comparing(Event::getRating).thenComparing(Event::getId))
+                        .collect(Collectors.toList());
+                break;
+            case DESC:
+                events = eventRepository.findAll(pageable).stream()
+                        .sorted(Comparator.comparing(Event::getRating).reversed().thenComparing(Event::getId))
+                        .collect(Collectors.toList());
+                break;
+        }
+
+        statsClient.hit(request.getRequestURI(), request.getRemoteAddr(), LocalDateTime.now());
+
+        ResponseEntity<Object> response = getEventsViewStats(events);
+        List<EventViewStats> list = objectMapper.readValue(
+                objectMapper.writeValueAsString(response.getBody()),
+                new TypeReference<>() {
+                });
+
         Map<Long, Long> eventsHits = getEventsHits(list);
 
         events.forEach(event -> event.setViews(eventsHits.get(event.getId())));
@@ -296,6 +321,7 @@ public class EventServiceImpl implements EventService {
         event.setInitiator(user);
         event.setCreatedOn(LocalDateTime.now());
         event.setState(EventState.PENDING);
+        event.setRating(0L);
 
         Event eventDb = eventRepository.save(event);
         log.info("Событие добавлено в базу данных в таблицу events по ID: {} \n {}", eventDb.getId(), eventDb);
@@ -411,9 +437,7 @@ public class EventServiceImpl implements EventService {
         Map<Long, Long> hits = new HashMap<>();
         for (EventViewStats eventViewStats : list) {
             String[] temp = eventViewStats.getUri().split("/");
-            log.info("getEventsHits: eventViewStats= {} temp = {}", eventViewStats, temp);
             Long eventId = Long.parseLong(temp[temp.length - 1]);
-            log.info("getEventsHits: eventViewStats= {} eventId = {}", eventViewStats, eventId);
             hits.put(eventId, Long.valueOf(eventViewStats.getHits()));
         }
         return hits;

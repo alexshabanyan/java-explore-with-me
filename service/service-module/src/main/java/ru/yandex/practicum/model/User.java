@@ -1,6 +1,7 @@
 package ru.yandex.practicum.model;
 
 import lombok.*;
+import org.hibernate.annotations.ColumnDefault;
 
 import javax.persistence.*;
 import javax.validation.constraints.Email;
@@ -23,4 +24,7 @@ public class User {
     @Email(message = "Неверный формат записи почты пользователя")
     @Column
     private String email;
+
+    @ColumnDefault("0")
+    private Long rating;
 }

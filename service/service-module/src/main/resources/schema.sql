@@ -1,3 +1,4 @@
+drop table IF EXISTS events_rating CASCADE;
 drop table IF EXISTS requests CASCADE;
 drop table IF EXISTS compilations CASCADE;
 drop table IF EXISTS events CASCADE;
@@ -7,15 +8,14 @@ drop table IF EXISTS categories CASCADE;
 create TABLE IF NOT EXISTS users (
     id      BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     name    varchar(100) NOT NULL,
-    email   varchar(320) NOT NULL UNIQUE
+    email   varchar(320) NOT NULL UNIQUE,
+    rating integer default 0
 );
 
 create TABLE IF NOT EXISTS categories (
     id      BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     name    varchar(100) NOT NULL UNIQUE
 );
-
-
 
 create TABLE IF NOT EXISTS events (
     id      BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -34,6 +34,7 @@ create TABLE IF NOT EXISTS events (
     state varchar(15),
     title varchar(100) NOT NULL,
     views integer default 0,
+    rating integer default 0,
 
     CONSTRAINT fk_events_to_categories FOREIGN KEY (category_id) REFERENCES categories (id),
     CONSTRAINT fk_events_to_users FOREIGN KEY (user_id) REFERENCES users (id)
@@ -57,4 +58,14 @@ create TABLE IF NOT EXISTS compilations (
     event_id bigint,
 
     CONSTRAINT fk_compilations_to_events FOREIGN KEY (event_id) REFERENCES events (id)
+);
+
+create TABLE IF NOT EXISTS events_rating (
+    id      BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    user_id  bigint,
+    event_id bigint,
+    rating varchar(10),
+
+    CONSTRAINT fk_events_rating_to_events FOREIGN KEY (event_id) REFERENCES events (id),
+    CONSTRAINT fk_events_rating_to_users FOREIGN KEY (user_id) REFERENCES users (id)
 );
