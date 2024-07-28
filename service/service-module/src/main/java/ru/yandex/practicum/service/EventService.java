@@ -3,6 +3,7 @@ package ru.yandex.practicum.service;
 import org.springframework.data.domain.Pageable;
 import ru.yandex.practicum.model.dto.*;
 import ru.yandex.practicum.model.enums.EventSortType;
+import ru.yandex.practicum.model.enums.RatingSortType;
 
 import javax.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
@@ -29,4 +30,6 @@ public interface EventService {
     EventFullDto getEventByIdCreatedByUser(Long userId, Long eventId);
 
     EventFullDto updateEventCreatedByUser(Long userId, Long eventId, UpdateEventUserRequestDto eventDto);
+
+    List<EventShortDto> getAllEventsSortedByRating(RatingSortType sort, Pageable pageable, HttpServletRequest request);
 }

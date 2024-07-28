@@ -1,6 +1,7 @@
 package ru.yandex.practicum.service.impl;
 
 import lombok.AllArgsConstructor;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -9,12 +10,12 @@ import ru.yandex.practicum.exceptions.ConflictException;
 import ru.yandex.practicum.exceptions.NotFoundException;
 import ru.yandex.practicum.model.User;
 import ru.yandex.practicum.model.dto.UserDto;
+import ru.yandex.practicum.model.enums.RatingSortType;
 import ru.yandex.practicum.model.mapper.UserMapper;
 import ru.yandex.practicum.repository.UserRepository;
 import ru.yandex.practicum.service.UserService;
 
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -27,6 +28,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserDto addUser(UserDto userDto) {
         User user = UserMapper.toUser(userDto);
+        user.setRating(0L);
         User userDb = userRepository.save(user);
         checkEmail(userDb.getId(), userDb.getEmail());
         log.info("Пользователь добавлен в базу данных в таблицу users по ID: {} \n {}", userDb.getId(), userDb);
@@ -57,6 +59,32 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(() -> new NotFoundException("Пользователь по ID: " + userId + " не найден."));
         userRepository.deleteById(userId);
         log.info("Пользователь удален из базы данных из таблицы users по ID: {} \n {}", userId, user);
+    }
+
+    @SneakyThrows
+    @Transactional(readOnly = true)
+    @Override
+    public List<UserDto> getAllUsersSortedByRating(RatingSortType sort, Pageable pageable) {
+        List<User> users = new ArrayList<>();
+        switch (sort) {
+            case ASC:
+                users = userRepository.findAll(pageable).stream()
+                        .sorted(Comparator.comparing(User::getRating).thenComparing(User::getId))
+                        .collect(Collectors.toList());
+                break;
+            case DESC:
+                users = userRepository.findAll(pageable).stream()
+                        .sorted(Comparator.comparing(User::getRating).reversed().thenComparing(User::getId))
+                        .collect(Collectors.toList());
+                break;
+        }
+
+        List<UserDto> usersRes = users.stream()
+                .map(UserMapper::toUserDto)
+                .collect(Collectors.toList());
+
+        log.info("Получено {} пользователей из базы данных из таблицы users.", usersRes.size());
+        return usersRes;
     }
 
     private void checkEmail(Long userId, String email) {
